@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Star, ChevronLeft, ChevronRight, Send, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
 import Layout from "@/components/Layout";
+import { supabase } from "@/integrations/supabase/client";
 
 const testimonials = [
   {
@@ -33,10 +34,24 @@ const Testimonials = () => {
   const next = () => setCurrent((c) => (c + 1) % testimonials.length);
   const prev = () => setCurrent((c) => (c - 1 + testimonials.length) % testimonials.length);
 
-  const handleFeedbackSubmit = (e: React.FormEvent) => {
+  const [loading, setLoading] = useState(false);
+
+  const handleFeedbackSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!feedback.name || !feedback.message) {
       toast.error("Please fill in your name and message.");
+      return;
+    }
+    setLoading(true);
+    const { error } = await supabase.from("feedback" as any).insert({
+      name: feedback.name,
+      email: feedback.email || null,
+      message: feedback.message,
+      rating: feedback.rating,
+    });
+    setLoading(false);
+    if (error) {
+      toast.error("Something went wrong. Please try again.");
       return;
     }
     setFeedbackSubmitted(true);
