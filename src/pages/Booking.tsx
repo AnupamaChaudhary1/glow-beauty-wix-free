@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { Phone, Mail, MapPin, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
 import Layout from "@/components/Layout";
+import { supabase } from "@/integrations/supabase/client";
 
 const serviceOptions = [
   "Haircuts & Styling",
@@ -28,10 +29,27 @@ const Booking = () => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name || !form.email || !form.phone || !form.service) {
       toast.error("Please fill in all required fields.");
+      return;
+    }
+    setLoading(true);
+    const { error } = await supabase.from("bookings" as any).insert({
+      name: form.name,
+      email: form.email,
+      phone: form.phone,
+      service: form.service,
+      preferred_date: form.date || null,
+      preferred_time: form.time || null,
+      message: form.message || null,
+    });
+    setLoading(false);
+    if (error) {
+      toast.error("Something went wrong. Please try again.");
       return;
     }
     setSubmitted(true);
