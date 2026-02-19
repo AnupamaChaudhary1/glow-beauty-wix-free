@@ -10,6 +10,7 @@ const navLinks = [
   { to: "/gallery", label: "Gallery" },
   { to: "/testimonials", label: "Testimonials" },
   { to: "/booking", label: "Book Now" },
+  { to: "/admin", label: "Dashboard" },
 ];
 
 const Navbar = () => {
@@ -33,7 +34,7 @@ const Navbar = () => {
                 location.pathname === link.to
                   ? "text-primary"
                   : "text-muted-foreground"
-              } ${link.label === "Book Now" ? "bg-primary text-primary-foreground px-5 py-2 rounded-full hover:bg-primary/90 hover:text-primary-foreground" : ""}`}
+              } ${link.label === "Book Now" ? "bg-primary text-primary-foreground px-5 py-2 rounded-full hover:bg-primary/90 hover:text-primary-foreground" : ""} ${link.label === "Dashboard" ? "bg-foreground text-background px-5 py-2 rounded-full hover:opacity-90 hover:text-background" : ""}`}
             >
               {link.label}
             </Link>
