@@ -72,6 +72,13 @@ const AdminLogin = () => {
           >
             {loading ? "Signing in..." : "Sign In"}
           </button>
+          <button
+            type="button"
+            onClick={() => navigate("/")}
+            className="w-full border border-border text-muted-foreground py-3.5 rounded-full font-medium hover:bg-muted transition-all text-sm tracking-wide"
+          >
+            Cancel
+          </button>
         </form>
       </motion.div>
     </div>
