@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Star, ChevronLeft, ChevronRight, Send, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
 import Layout from "@/components/Layout";
 import { supabase } from "@/integrations/supabase/client";
 
-const testimonials = [
+const defaultTestimonials = [
   {
     name: "Priya Sharma",
     text: "Radiance Glow transformed my look for my wedding day. The bridal makeup was absolutely flawless and lasted the entire celebration. I received so many compliments!",
@@ -26,15 +26,42 @@ const testimonials = [
   },
 ];
 
+interface FeedbackItem {
+  id: string;
+  name: string;
+  message: string;
+  rating: number;
+  created_at: string;
+}
+
 const Testimonials = () => {
   const [current, setCurrent] = useState(0);
   const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
   const [feedback, setFeedback] = useState({ name: "", email: "", message: "", rating: 5 });
-
-  const next = () => setCurrent((c) => (c + 1) % testimonials.length);
-  const prev = () => setCurrent((c) => (c - 1 + testimonials.length) % testimonials.length);
-
+  const [publicFeedback, setPublicFeedback] = useState<FeedbackItem[]>([]);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchFeedback = async () => {
+      const { data } = await supabase
+        .from("feedback" as any)
+        .select("id, name, message, rating, created_at")
+        .order("created_at", { ascending: false })
+        .limit(20);
+      if (data) setPublicFeedback(data as any as FeedbackItem[]);
+    };
+    fetchFeedback();
+  }, [feedbackSubmitted]);
+
+  const allTestimonials = [
+    ...defaultTestimonials.map((t) => ({ ...t, isDefault: true })),
+    ...publicFeedback.map((f) => ({ name: f.name, text: f.message, rating: f.rating, service: "", isDefault: false })),
+  ];
+
+  const displayed = allTestimonials.length > 0 ? allTestimonials : defaultTestimonials.map((t) => ({ ...t, isDefault: true }));
+
+  const next = () => setCurrent((c) => (c + 1) % displayed.length);
+  const prev = () => setCurrent((c) => (c - 1 + displayed.length) % displayed.length);
 
   const handleFeedbackSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -83,15 +110,17 @@ const Testimonials = () => {
                 className="bg-card rounded-2xl p-8 md:p-12 shadow-rose text-center"
               >
                 <div className="flex justify-center gap-1 mb-6">
-                  {Array.from({ length: testimonials[current].rating }).map((_, i) => (
+                  {Array.from({ length: displayed[current].rating }).map((_, i) => (
                     <Star key={i} size={20} className="text-gold fill-gold" />
                   ))}
                 </div>
                 <blockquote className="font-display text-xl md:text-2xl text-foreground italic leading-relaxed mb-6">
-                  "{testimonials[current].text}"
+                  "{displayed[current].text}"
                 </blockquote>
-                <p className="font-semibold text-foreground">{testimonials[current].name}</p>
-                <p className="text-sm text-muted-foreground">{testimonials[current].service}</p>
+                <p className="font-semibold text-foreground">{displayed[current].name}</p>
+                {displayed[current].service && (
+                  <p className="text-sm text-muted-foreground">{displayed[current].service}</p>
+                )}
               </motion.div>
             </AnimatePresence>
 
@@ -100,7 +129,7 @@ const Testimonials = () => {
                 <ChevronLeft size={20} />
               </button>
               <div className="flex items-center gap-2">
-                {testimonials.map((_, i) => (
+                {displayed.map((_, i) => (
                   <button key={i} onClick={() => setCurrent(i)} className={`w-2.5 h-2.5 rounded-full transition-colors ${i === current ? "bg-primary" : "bg-border"}`} aria-label={`Go to testimonial ${i + 1}`} />
                 ))}
               </div>
@@ -111,6 +140,37 @@ const Testimonials = () => {
           </div>
         </div>
       </section>
+
+      {/* All Reviews Grid */}
+      {publicFeedback.length > 0 && (
+        <section className="py-16 bg-rose-light/30">
+          <div className="container mx-auto px-4 max-w-5xl">
+            <h2 className="font-display text-3xl font-bold text-foreground text-center mb-10">All Reviews</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {publicFeedback.map((f) => (
+                <motion.div
+                  key={f.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  className="bg-card rounded-xl p-6 shadow-sm border border-border"
+                >
+                  <div className="flex gap-1 mb-3">
+                    {Array.from({ length: f.rating }).map((_, i) => (
+                      <Star key={i} size={14} className="text-gold fill-gold" />
+                    ))}
+                  </div>
+                  <p className="text-foreground text-sm mb-4 line-clamp-4">"{f.message}"</p>
+                  <p className="font-semibold text-foreground text-sm">{f.name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {new Date(f.created_at).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}
+                  </p>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Feedback Form */}
       <section className="py-20 bg-gradient-rose">
@@ -151,8 +211,8 @@ const Testimonials = () => {
                   <label className="text-sm font-medium text-foreground mb-1 block">Your Experience *</label>
                   <textarea value={feedback.message} onChange={(e) => setFeedback({ ...feedback, message: e.target.value })} required maxLength={1000} rows={4} className="w-full px-4 py-3 rounded-lg border border-border bg-background text-foreground focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none transition-all text-sm resize-none" placeholder="Tell us about your experience..." />
                 </div>
-                <button type="submit" className="w-full bg-primary text-primary-foreground py-3.5 rounded-full font-medium hover:bg-primary/90 transition-all shadow-rose text-sm tracking-wide inline-flex items-center justify-center gap-2">
-                  <Send size={16} /> Submit Feedback
+                <button type="submit" disabled={loading} className="w-full bg-primary text-primary-foreground py-3.5 rounded-full font-medium hover:bg-primary/90 transition-all shadow-rose text-sm tracking-wide inline-flex items-center justify-center gap-2 disabled:opacity-50">
+                  <Send size={16} /> {loading ? "Submitting..." : "Submit Feedback"}
                 </button>
               </form>
             )}

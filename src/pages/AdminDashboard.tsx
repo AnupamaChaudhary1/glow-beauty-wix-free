@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { LogOut, Download, Calendar, MessageSquare, Star, Trash2 } from "lucide-react";
+import { LogOut, Download, Calendar, MessageSquare, Star, Trash2, CheckCircle, Clock, Send } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -14,6 +14,7 @@ interface Booking {
   preferred_date: string | null;
   preferred_time: string | null;
   message: string | null;
+  status: string;
   created_at: string;
 }
 
@@ -31,6 +32,7 @@ const AdminDashboard = () => {
   const [feedbacks, setFeedbacks] = useState<Feedback[]>([]);
   const [tab, setTab] = useState<"bookings" | "feedback">("bookings");
   const [loading, setLoading] = useState(true);
+  const [acceptingId, setAcceptingId] = useState<string | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -40,7 +42,6 @@ const AdminDashboard = () => {
         navigate("/admin/login");
         return;
       }
-      // Check if user has admin role
       const { data: roles } = await supabase
         .from("user_roles")
         .select("role")
@@ -83,6 +84,32 @@ const AdminDashboard = () => {
     fetchData();
   };
 
+  const handleAccept = async (bookingId: string) => {
+    setAcceptingId(bookingId);
+    try {
+      const { data, error } = await supabase.functions.invoke("send-acceptance-email", {
+        body: { bookingId },
+      });
+      if (error) throw error;
+      toast.success(data?.emailSent ? "Accepted & email sent!" : "Accepted! (Configure email service to send notifications)");
+      fetchData();
+    } catch (err: any) {
+      toast.error("Failed to accept booking.");
+      console.error(err);
+    }
+    setAcceptingId(null);
+  };
+
+  const handleMarkCompleted = async (bookingId: string) => {
+    const { error } = await supabase.from("bookings" as any).update({ status: "completed" }).eq("id", bookingId);
+    if (error) {
+      toast.error("Failed to update.");
+      return;
+    }
+    toast.success("Marked as completed.");
+    fetchData();
+  };
+
   const downloadCSV = (data: any[], filename: string) => {
     if (!data.length) return;
     const headers = Object.keys(data[0]);
@@ -103,6 +130,19 @@ const AdminDashboard = () => {
 
   const formatDate = (d: string) =>
     new Date(d).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+
+  const statusBadge = (status: string) => {
+    const styles: Record<string, string> = {
+      pending: "bg-yellow-100 text-yellow-800",
+      accepted: "bg-blue-100 text-blue-800",
+      completed: "bg-green-100 text-green-800",
+    };
+    return (
+      <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${styles[status] || "bg-muted text-muted-foreground"}`}>
+        {status.charAt(0).toUpperCase() + status.slice(1)}
+      </span>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -168,9 +208,9 @@ const AdminDashboard = () => {
                       <th className="px-4 py-3 text-left font-medium text-foreground">Phone</th>
                       <th className="px-4 py-3 text-left font-medium text-foreground">Service</th>
                       <th className="px-4 py-3 text-left font-medium text-foreground">Date/Time</th>
-                      <th className="px-4 py-3 text-left font-medium text-foreground">Message</th>
+                      <th className="px-4 py-3 text-left font-medium text-foreground">Status</th>
                       <th className="px-4 py-3 text-left font-medium text-foreground">Submitted</th>
-                      <th className="px-4 py-3"></th>
+                      <th className="px-4 py-3 text-left font-medium text-foreground">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -181,12 +221,33 @@ const AdminDashboard = () => {
                         <td className="px-4 py-3 text-muted-foreground">{b.phone}</td>
                         <td className="px-4 py-3 text-foreground">{b.service}</td>
                         <td className="px-4 py-3 text-muted-foreground">{b.preferred_date || "—"} {b.preferred_time || ""}</td>
-                        <td className="px-4 py-3 text-muted-foreground max-w-[200px] truncate">{b.message || "—"}</td>
+                        <td className="px-4 py-3">{statusBadge(b.status)}</td>
                         <td className="px-4 py-3 text-muted-foreground text-xs">{formatDate(b.created_at)}</td>
                         <td className="px-4 py-3">
-                          <button onClick={() => handleDelete("bookings", b.id)} className="text-muted-foreground hover:text-destructive transition-colors">
-                            <Trash2 size={16} />
-                          </button>
+                          <div className="flex items-center gap-2">
+                            {b.status === "pending" && (
+                              <button
+                                onClick={() => handleAccept(b.id)}
+                                disabled={acceptingId === b.id}
+                                className="text-blue-600 hover:text-blue-800 transition-colors disabled:opacity-50"
+                                title="Accept & send email"
+                              >
+                                <Send size={16} />
+                              </button>
+                            )}
+                            {b.status === "accepted" && (
+                              <button
+                                onClick={() => handleMarkCompleted(b.id)}
+                                className="text-green-600 hover:text-green-800 transition-colors"
+                                title="Mark completed"
+                              >
+                                <CheckCircle size={16} />
+                              </button>
+                            )}
+                            <button onClick={() => handleDelete("bookings", b.id)} className="text-muted-foreground hover:text-destructive transition-colors" title="Delete">
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
