@@ -25,6 +25,7 @@ export type Database = {
           preferred_date: string | null
           preferred_time: string | null
           service: string
+          status: string
         }
         Insert: {
           created_at?: string
@@ -36,6 +37,7 @@ export type Database = {
           preferred_date?: string | null
           preferred_time?: string | null
           service: string
+          status?: string
         }
         Update: {
           created_at?: string
@@ -47,6 +49,7 @@ export type Database = {
           preferred_date?: string | null
           preferred_time?: string | null
           service?: string
+          status?: string
         }
         Relationships: []
       }
