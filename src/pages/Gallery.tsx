@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
 import Layout from "@/components/Layout";
+import { supabase } from "@/integrations/supabase/client";
 import gallery1 from "@/assets/gallery-1.jpg";
 import gallery2 from "@/assets/gallery-2.jpg";
 import gallery3 from "@/assets/gallery-3.jpg";
@@ -12,7 +13,7 @@ import serviceNails from "@/assets/service-nails.jpg";
 import serviceSpa from "@/assets/service-spa.jpg";
 import heroModel from "@/assets/hero-model.jpg";
 
-const images = [
+const defaultImages = [
   { src: gallery1, alt: "Luxury salon interior" },
   { src: serviceHair, alt: "Hair styling session" },
   { src: gallery2, alt: "Beauty products display" },
@@ -24,8 +25,28 @@ const images = [
   { src: heroModel, alt: "Lipstick product shot" },
 ];
 
+interface GalleryPhoto {
+  id: string;
+  url: string;
+  caption: string | null;
+}
+
 const Gallery = () => {
   const [selected, setSelected] = useState<number | null>(null);
+  const [dbPhotos, setDbPhotos] = useState<GalleryPhoto[]>([]);
+
+  useEffect(() => {
+    const fetchPhotos = async () => {
+      const { data } = await supabase.from("gallery_photos" as any).select("*").order("sort_order");
+      if (data) setDbPhotos(data as any as GalleryPhoto[]);
+    };
+    fetchPhotos();
+  }, []);
+
+  const allImages = [
+    ...dbPhotos.map(p => ({ src: p.url, alt: p.caption || "Gallery photo" })),
+    ...defaultImages,
+  ];
 
   return (
     <Layout>
@@ -41,7 +62,7 @@ const Gallery = () => {
       <section className="py-20">
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {images.map((img, i) => (
+            {allImages.map((img, i) => (
               <motion.div
                 key={i}
                 initial={{ opacity: 0, scale: 0.95 }}
@@ -52,11 +73,7 @@ const Gallery = () => {
                 onClick={() => setSelected(i)}
               >
                 <div className="rounded-xl overflow-hidden aspect-square relative">
-                  <img
-                    src={img.src}
-                    alt={img.alt}
-                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                  />
+                  <img src={img.src} alt={img.alt} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
                   <div className="absolute inset-0 bg-foreground/0 group-hover:bg-foreground/20 transition-colors duration-300" />
                 </div>
               </motion.div>
@@ -65,27 +82,11 @@ const Gallery = () => {
         </div>
       </section>
 
-      {/* Lightbox */}
       <AnimatePresence>
         {selected !== null && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-foreground/90 flex items-center justify-center p-4"
-            onClick={() => setSelected(null)}
-          >
-            <button className="absolute top-6 right-6 text-primary-foreground/80 hover:text-primary-foreground" aria-label="Close">
-              <X size={28} />
-            </button>
-            <motion.img
-              initial={{ scale: 0.9 }}
-              animate={{ scale: 1 }}
-              exit={{ scale: 0.9 }}
-              src={images[selected].src}
-              alt={images[selected].alt}
-              className="max-w-full max-h-[85vh] rounded-xl object-contain"
-            />
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 bg-foreground/90 flex items-center justify-center p-4" onClick={() => setSelected(null)}>
+            <button className="absolute top-6 right-6 text-primary-foreground/80 hover:text-primary-foreground" aria-label="Close"><X size={28} /></button>
+            <motion.img initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }} src={allImages[selected].src} alt={allImages[selected].alt} className="max-w-full max-h-[85vh] rounded-xl object-contain" />
           </motion.div>
         )}
       </AnimatePresence>
