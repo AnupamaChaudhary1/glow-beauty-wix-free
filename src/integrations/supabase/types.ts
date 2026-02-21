@@ -80,6 +80,60 @@ export type Database = {
         }
         Relationships: []
       }
+      gallery_photos: {
+        Row: {
+          caption: string | null
+          created_at: string
+          id: string
+          sort_order: number
+          url: string
+        }
+        Insert: {
+          caption?: string | null
+          created_at?: string
+          id?: string
+          sort_order?: number
+          url: string
+        }
+        Update: {
+          caption?: string | null
+          created_at?: string
+          id?: string
+          sort_order?: number
+          url?: string
+        }
+        Relationships: []
+      }
+      service_prices: {
+        Row: {
+          category: string
+          created_at: string
+          id: string
+          item_name: string
+          price: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          id?: string
+          item_name: string
+          price: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          id?: string
+          item_name?: string
+          price?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string
